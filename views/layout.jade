@@ -10,13 +10,13 @@ html
                     span.icon-bar
                     span.icon-bar
                     span.icon-bar
-                a.navbar-brand(href='/deploys/' + vm.app.id)= vm.app.title
+                a.navbar-brand(href='/')= vm.app.title
             .collapse.navbar-collapse#navbar-collapse
                 ul.nav.navbar-nav
                     each navLink in navLinks
                         li.dropdown
                             if navLink.type === 'link'
-                                a(href='/deploys/' + vm.app.id + '/' + navLink.linkTarget.type + '/' + navLink.linkTarget.id)= navLink.text
+                                a(href='/' + navLink.linkTarget.type + '/' + navLink.linkTarget.id)= navLink.text
                             else if navLink.type === 'dropdown'
                                 a.dropdown-toggle(href="#", data-toggle="dropdown")
                                     | #{navLink.text}
@@ -24,21 +24,21 @@ html
                                 ul.dropdown-menu
                                     each childLink in navLink.children
                                         li
-                                            a(href='/deploys/' + vm.app.id + '/' + childLink.linkTarget.type + '/' + childLink.linkTarget.id)= childLink.text
+                                            a(href='/' + childLink.linkTarget.type + '/' + childLink.linkTarget.id)= childLink.text
                 ul.nav.navbar-nav.navbar-right
                     ul.nav.navbar-nav
                     if(username)
                         li
                             a= username
                         li
-                            a(href='/deploys/' + vm.app.id + '/logout') Logout
+                            a(href='/logout') Logout
                     else
                         if showLinks.login
                             li
-                                a(href='/deploys/' + vm.app.id + '/login') Login
+                                a(href='/login') Login
                         if showLinks.registration
                             li
-                                a(href='/deploys/' + vm.app.id + '/register') Register
+                                a(href='/register') Register
 
 
         .container

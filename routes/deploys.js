@@ -24,7 +24,7 @@ function handleError(err, req, res){
 }
 
 exports.appHome = function(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
 
   db.getDeployedApp(appId, function(err, app){
     if(err) {
@@ -50,7 +50,7 @@ exports.appHome = function(req, res){
 };
 
 exports.appLoginGET = function(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
 
   db.getDeployedApp(appId, function(err, app){
     if(err) {
@@ -89,7 +89,8 @@ exports.appLoginGET = function(req, res){
 };
 
 exports.appLoginPOST = function(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
+
   var loginForm = req.body;
 
   db.authenticateAppUser(appId, loginForm, function(err, isValidLogin){
@@ -102,16 +103,16 @@ exports.appLoginPOST = function(req, res){
     if(isValidLogin) {
       res.cookie("username", loginForm.id);
 
-      res.redirect("/deploys/" + appId);
+      res.redirect("/");
     }
     else{
-      res.redirect("/deploys/" + appId + "/login?invalid=true");
+      res.redirect("/login?invalid=true");
     }
   });
 };
 
 exports.appRegisterGET = function(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
 
   db.getDeployedApp(appId, function(err, app){
     if(err) {
@@ -147,7 +148,8 @@ exports.appRegisterGET = function(req, res){
 };
 
 exports.appRegisterPOST = function(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
+
   var registrationForm = req.body;
 
   db.getDeployedApp(appId, function(err, app){
@@ -171,21 +173,19 @@ exports.appRegisterPOST = function(req, res){
 
     if(registrationForm.password === registrationForm.confirmPassword){
       db.registerUser(appId, registrationForm, function(){
-        res.redirect("/deploys/" + appId + "/login?registered=true");
+        res.redirect("/login?registered=true");
       });
     }
     else{
-        res.redirect("/deploys/" + appId + "/register?passwordMatchFail=true");
+        res.redirect("/register?passwordMatchFail=true");
     }
   });
 };
 
 exports.appLogoutGET = function(req, res){
-  var appId = req.params.appId;
-
   res.clearCookie("username");
 
-  res.redirect("/deploys/" + appId);
+  res.redirect("/");
 };
 
 exports.appForm = function(req, res){
@@ -193,7 +193,7 @@ exports.appForm = function(req, res){
 };
 
 function createAppFormView(req, res){
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
 
   db.getDeployedApp(appId, function(err, app){
     if(err) {
@@ -218,13 +218,13 @@ function createAppFormView(req, res){
     var form = app.forms.filter(function(form) { return form.id === formId; })[0];
 
     if(form.authenticationRules && form.authenticationRules.create && !req.cookies.username){
-      res.redirect("/deploys/" + appId + "/login?requiresAuthentication=true");
+      res.redirect("/login?requiresAuthentication=true");
 
       return;
     }
 
     if(form.authenticationRules && form.authenticationRules.view && req.query.formDataId && !req.cookies.username){
-      res.redirect("/deploys/" + appId + "/login?requiresAuthentication=true");
+      res.redirect("/login?requiresAuthentication=true");
 
       return;
     }
@@ -251,7 +251,8 @@ function createAppFormView(req, res){
 
 exports.saveAppForm = function(req, res){
   // Make model out of form data using Schema
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
+
   var formId = req.params.formId;
   var formData = req.body;
 
@@ -269,7 +270,7 @@ exports.saveAppForm = function(req, res){
     }
 
     if(form.authenticationRules && form.authenticationRules.update && formData.id && !req.cookies.username){
-      res.redirect("/deploys/" + appId + "/login?requiresAuthentication=true");
+      res.redirect("/login?requiresAuthentication=true");
 
       return;
     }
@@ -285,7 +286,7 @@ exports.saveAppForm = function(req, res){
             return;
           }
 
-          var url = "/deploys/" + appId + "/forms/" + formId.toString() + "?saved=true";
+          var url = "/forms/" + formId.toString() + "?saved=true";
 
           res.redirect(url);
         });
@@ -360,7 +361,8 @@ function validateForm(appId, formId, req, res, cb){
 
 exports.appListing = function(req, res){
   // Get listing
-  var appId = req.params.appId;
+  var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
+
   var listingId = req.params.listingId;
 
   db.getDeployedListing(appId, listingId, function(err, listing){
@@ -377,7 +379,7 @@ exports.appListing = function(req, res){
     }
 
     if(listing.requiresAuthentication && !req.cookies.username){
-      res.redirect("/deploys/" + appId + "/login?requiresAuthentication=true");
+      res.redirect("/login?requiresAuthentication=true");
 
       return;
     }

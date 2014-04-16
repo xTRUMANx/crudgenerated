@@ -7,7 +7,7 @@ block content
 
     h2= form.title
 
-    form.form-horizontal(method='post', action='/deploys/' + vm.app.id + '/forms/' + form.id)
+    form.form-horizontal(method='post', action='/forms/' + form.id)
         if(vm.errors)
             ul.text-danger
                 each error in vm.errors
