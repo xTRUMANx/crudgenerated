@@ -1,5 +1,6 @@
 var db = require('../services/db'),
-  expressValidator = require('express-validator');
+  expressValidator = require('express-validator'),
+  q = require('q');
 
 expressValidator.validator.isSubset = function(value, array) {
   if (!Array.isArray(value)) {
@@ -217,6 +218,12 @@ function createAppFormView(req, res){
     var formId = Number(req.params.formId);
     var form = app.forms.filter(function(form) { return form.id === formId; })[0];
 
+    if(!form) {
+      res.send(404, "form not found");
+
+      return;
+    }
+
     if(form.authenticationRules && form.authenticationRules.create && !req.cookies.username){
       res.redirect("/login?requiresAuthentication=true");
 
@@ -360,7 +367,6 @@ function validateForm(appId, formId, req, res, cb){
 }
 
 exports.appListing = function(req, res){
-  // Get listing
   var appId = req.subdomains.length && req.subdomains[req.subdomains.length - 1];
 
   var listingId = req.params.listingId;
@@ -385,21 +391,52 @@ exports.appListing = function(req, res){
     }
 
     if(listing){
-      // Get listing data
-      db.getFormData(appId, listing.formId, null, function(err, data){
+      var promises = [];
+
+      var getFormDataDeferred = q.defer();
+      promises.push(getFormDataDeferred.promise);
+
+      db.getFormData(appId, listing.formId, null, function(err, data) {
         if(err){
-          handleError(err, req, res);
-
-          return;
+          getFormDataDeferred.reject(err);
         }
-
-        var fieldIds = [];
-
-        for(var key in listing.fields) {
-          if(listing.fields[key]) fieldIds.push(Number(key));
+        else {
+          getFormDataDeferred.resolve(data);
         }
+      });
 
-        db.getDeployedForm(appId, listing.formId, function(err, form){
+      var getDeployedFormDeferred = q.defer();
+      promises.push(getDeployedFormDeferred.promise);
+
+      db.getDeployedForm(appId, listing.formId, function(err, form) {
+        if(err){
+          getDeployedFormDeferred.reject(err);
+        }
+        else {
+          getDeployedFormDeferred.resolve(form);
+        }
+      });
+
+      var getDeployedAppDeferred = q.defer();
+      promises.push(getDeployedAppDeferred.promise);
+
+      db.getDeployedApp(appId, function(err, app){
+        if(err){
+          getDeployedAppDeferred.reject(err);
+        }
+        else {
+          getDeployedAppDeferred.resolve(app);
+        }
+      });
+
+      q.all(promises).
+        spread(function(data, form, app){
+          var fieldIds = [];
+
+          for(var key in listing.fields) {
+            if(listing.fields[key]) fieldIds.push(Number(key));
+          }
+
           var listingFields = form.fields.filter(function(field){ return fieldIds.indexOf(field.id) > -1});
 
           listingFields.forEach(function(field){
@@ -408,25 +445,23 @@ exports.appListing = function(req, res){
 
           listingFields.sort(function(a,b){ return a.order > b.order; });
 
-          db.getDeployedApp(appId, function(err, app){
-            if(err) {
-              handleError(err, req, res);
+          var topLevelNavLinks = app.navLinks.links.filter(function(navLink){ return !navLink.parentId; });
 
-              return;
-            }
-
-            var topLevelNavLinks = app.navLinks.links.filter(function(navLink){ return !navLink.parentId; });
-
-            topLevelNavLinks.forEach(function(navLink){
-              navLink.children = app.navLinks.links.filter(function(nL){ return nL.parentId === navLink.id; });
-            });
-
-            var vm = { app: app, listing: listing, data: data, listingFields: listingFields };
-
-            res.render("appListing", { title: listing.title, vm: vm, navLinks: topLevelNavLinks, showLinks: app.navLinks.showLinks, username: req.cookies.username });
+          topLevelNavLinks.forEach(function(navLink){
+            navLink.children = app.navLinks.links.filter(function(nL){ return nL.parentId === navLink.id; });
           });
+
+          var vm = { app: app, listing: listing, data: data, listingFields: listingFields };
+
+          res.render("appListing", { title: listing.title, vm: vm, navLinks: topLevelNavLinks, showLinks: app.navLinks.showLinks, username: req.cookies.username });
+        }).
+        fail(function(err){
+          if(err){
+            handleError(err, req, res);
+
+            return;
+          }
         });
-      });
     }
     else{
       res.send("listing not found", 404)

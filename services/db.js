@@ -228,6 +228,8 @@ exports.getFormData = function(appId, formId, formDataId, cb){
       parameters.push(formDataId);
     }
 
+    sql += " order by id";
+
     var query = client.query(sql, parameters);
     var formData = [];
 
